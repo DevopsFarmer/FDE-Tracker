@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FDE Prep Tracker</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#1b2430;--mu:#657083;--ac:#2563eb;--ok:#16a34a;--bd:#e2e6ec;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12161c;--card:#1b222b;--tx:#e6eaf0;--mu:#93a0b3;--ac:#6ea0ff;--ok:#4ade80;--bd:#2a3440}}
+:root[data-theme="dark"]{--bg:#12161c;--card:#1b222b;--tx:#e6eaf0;--mu:#93a0b3;--ac:#6ea0ff;--ok:#4ade80;--bd:#2a3440}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:820px;margin:0 auto;padding:16px}
+h1{font-size:22px;margin:4px 0}.mu{color:var(--mu);font-size:13px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;margin:12px 0}
+.bar{height:10px;background:var(--bd);border-radius:6px;overflow:hidden}.bar i{display:block;height:100%;background:var(--ok);width:0;transition:width .3s}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+button,input[type=date]{font:inherit;background:var(--card);color:var(--tx);border:1px solid var(--bd);border-radius:8px;padding:6px 10px}
+button{cursor:pointer}button.p{background:var(--ac);color:#fff;border-color:var(--ac)}
+details{background:var(--card);border:1px solid var(--bd);border-radius:12px;margin:10px 0}
+summary{cursor:pointer;padding:12px 14px;font-weight:600;list-style:none}
+summary .mu{font-weight:400;display:block}
+.wb{padding:0 14px 12px}
+.day{border-top:1px solid var(--bd);padding:8px 0}.day.today{background:color-mix(in srgb,var(--ac) 10%,transparent);border-radius:8px;padding:8px}
+.dh{font-weight:600;font-size:13px;color:var(--mu);margin-bottom:2px}
+label{display:flex;gap:8px;align-items:flex-start;padding:3px 0;cursor:pointer}
+label.d span{text-decoration:line-through;color:var(--mu)}
+input[type=checkbox]{margin-top:4px;width:17px;height:17px;accent-color:var(--ok)}
+textarea{width:100%;min-height:64px;background:var(--card);color:var(--tx);border:1px solid var(--bd);border-radius:8px;padding:8px;font:inherit}
+#msg{color:var(--mu);font-size:13px}
+</style></head><body><main>
+<div class="row"><div><h1>FDE Prep Tracker</h1><div class="mu" id="who">10 weeks · Databricks Sr FDE</div></div>
+<button id="th">Theme</button></div>
+<div class="card"><div class="row"><b id="pct">0%</b><span class="mu" id="cnt"></span></div>
+<div class="bar" style="margin:8px 0"><i id="fill"></i></div>
+<div class="row"><label class="mu" style="padding:0">Start date <input type="date" id="sd"></label><button id="jt">Jump to today</button></div>
+<div id="msg"></div></div>
+<div class="card"><div class="row"><b>Skills <span class="mu" id="skc"></span></b><label class="mu" style="padding:0"><input type="checkbox" id="fresh"> Starting fresh</label></div><div class="mu">Tick what you already have. Pre-ticked from your resume; “Starting fresh” clears everything and adds a foundations list.</div><div id="skills"></div></div>
+<div id="weeks"></div>
+<div class="card"><b>Learning log</b><div class="mu" style="margin-bottom:6px">Wins, blockers, interview stories</div><textarea id="notes"></textarea></div>
+<div class="card row"><span class="mu">Progress saves in this browser only, so use the same device and browser.</span><button id="rs">Reset all</button></div>
+</main>
+<script>
+const SUN="Weekly review: update learning log|Rest / catch up on missed items";
+const W=[
+["Spark fundamentals","DataFrames, lazy eval, architecture",[
+"Set up Databricks Free Edition + local PySpark|Take Databricks Fundamentals (free course)",
+"Coursera Spark Foundations: modules 1–2|Notes: lazy eval, transformations vs actions",
+"Coursera Spark Foundations: module 3|Summarize driver/executor/DAG in your words",
+"Load NYC taxi data in PySpark, build ETL chain|Run .explain(True) and write plan notes",
+"Same aggregation in DataFrame API and Spark SQL|Compare the two plans",
+"Write partitioned Parquet; compare filtered reads|Push Week 1 notebook to GitHub"]],
+["Spark internals","Catalyst, shuffles, joins, AQE, Spark UI",[
+"High Performance Spark: Catalyst and Tungsten|Watch a Spark internals talk",
+"Study shuffles; broadcast vs sort-merge joins|Cookbook course: minimize-shuffles module",
+"Learn partitioning and AQE|Spark UI tour: stages, tasks, spill",
+"Create a skewed join (taxi + zones)|Find straggler tasks in the Spark UI",
+"Force a broadcast join; compare plans and timings|AQE on vs off experiment",
+"Write half-page AQE explanation|Push Week 2 repo with README"]],
+["Performance tuning","Skew, small files, caching, memory",[
+"Learn skew fixes: salting, AQE skew join|Implement salting on your skewed join",
+"Small files: compaction, coalesce vs repartition|Reproduce and fix a small-files case",
+"Caching/persistence and memory/spill tuning|Tune shuffle partitions",
+"Profile your slow Week 2 job|Apply 3 optimizations",
+"Cookbook: Delta/query performance modules|Record before/after numbers",
+"README with before/after results|Explain your tuning aloud (5 min, record it)"]],
+["Delta and lakehouse","Delta Lake, medallion on your own data",[
+"Delta basics: ACID, transaction log|Create Delta tables, inspect _delta_log",
+"MERGE, time travel, schema evolution|CDC upsert exercise",
+"OPTIMIZE, Z-order, VACUUM|Read: Delta vs Iceberg",
+"Design medallion layout for SeeTest/Grafana logs|Build bronze layer",
+"Build silver layer (clean, dedupe)|Add data quality checks",
+"Build gold aggregates + simple dashboard|Push repo + architecture sketch"]],
+["Pipelines and orchestration","Auto Loader, Lakeflow, streaming, exam",[
+"Auto Loader ingestion|Schema inference and evolution",
+"Lakeflow declarative pipelines|Expectations and quarantine of bad rows",
+"Structured Streaming basics|Stream into a Delta table",
+"Jobs/Workflows orchestration; Airflow concepts|Schedule your pipeline",
+"Packt DE Associate course: revision|Practice exam questions",
+"Take Data Engineer Associate exam (or full mock)|Log weak areas"]],
+["Governance and IaC","Unity Catalog, Terraform, CI/CD",[
+"Unity Catalog: catalogs, schemas, volumes|Permissions and grants",
+"Lineage, system tables, audit|Row/column security overview",
+"Terraform Databricks provider basics|Provision workspace objects",
+"Asset Bundles / CI-CD for Databricks|Pipeline in Jenkins or GitHub Actions",
+"Deploy Week 4–5 pipeline via Terraform + CI/CD|Add dev/prod separation",
+"Document the deployment flow|Push IaC to repo"]],
+["MLOps","MLflow, registry, serving",[
+"MLflow tracking basics|Log runs for a model on your data",
+"Feature engineering on telemetry|Train anomaly detection model",
+"Model registry and versioning in Unity Catalog|Register and alias a model",
+"Deploy a Model Serving endpoint|Call it via REST",
+"Batch inference job|Read: monitoring and drift",
+"Write the MLOps flow doc|Push notebooks"]],
+["GenAI and agents","RAG, Vector Search, agents, evaluation",[
+"Academy GenAI Engineering course, part 1|RAG concepts: chunking, embeddings",
+"Build a Vector Search index|Build the query pipeline",
+"RAG chain with a foundation model|Add tool/function calling",
+"Agent evaluation with MLflow|Add tracing and guardrails",
+"Port your RCA agent idea to query Delta data|Try Agent Bricks / Genie",
+"GenAI Engineer Associate prep|Push agent repo"]],
+["Capstone","End-to-end project on GitHub",[
+"Finalize architecture diagram|Create repo skeleton",
+"Wire ingest → medallion pipeline|Orchestrate with Jobs",
+"Integrate model + agent|End-to-end test",
+"Build UI (Streamlit or Databricks App)|Handle auth and secrets",
+"IaC + CI/CD for the whole project|Add monitoring and alerts",
+"Write README + demo GIF/video|Publish on GitHub and LinkedIn"]],
+["Interview readiness","Whiteboarding, stories, applications",[
+"Whiteboard: streaming ingestion platform|Record and review yourself",
+"Whiteboard: RAG system|Whiteboard: warehouse migration",
+"Write 5 STAR stories|Mock customer discovery call",
+"Rewrite resume for FDE|Update LinkedIn",
+"Spark internals Q&A drill|Mock interview with a peer",
+"Apply to FDE roles|Plan the next 30 days"]]];
+const DAYS=[];W.forEach((w,i)=>{const d=[...w[2],SUN];d.forEach((t,j)=>DAYS.push({w:i,d:j,n:i*7+j+1,items:t.split("|")}))});
+const TOTAL=DAYS.reduce((a,x)=>a+x.items.length,0);
+const SK=[["Already have (from your resume)",[["Python / Bash / Go",1],["Docker, Kubernetes, Helm, ArgoCD",1],["Terraform, Ansible",1],["Jenkins, GitHub Actions CI/CD",1],["AWS + GCP",1],["Grafana, Prometheus, Loki",1],["Vault, IAM, RBAC",1],["LLM agents, RAG, LangChain",1],["Kafka basics",1],["SRE / incident management",1],["Enterprise stakeholder work",1]]],
+["Gaps for the FDE role",[["Advanced SQL",0],["PySpark / Spark",0],["Spark internals + tuning",0],["Delta Lake / Iceberg",0],["Databricks, Unity Catalog, Lakeflow",0],["Structured Streaming",0],["MLflow / MLOps on Databricks",0],["Data modeling + medallion",0],["Airflow / orchestration",0],["Databricks certification",0],["Solution architecture + whiteboarding",0],["Scoping + billable delivery",0]]]];
+const FD=["Python basics","SQL basics","Git","Linux / CLI","One cloud: core services","Docker basics","CI/CD basics","Terraform basics","Statistics / ML basics","Data modeling basics"];
+function sk(){const f=!!S.fresh;if(!S.skills){S.skills={};SK.forEach(g=>g[1].forEach(x=>S.skills[x[0]]=f?0:x[1]))}
+ const gs=f?[["Foundations",FD.map(x=>[x])],["Core platform skills",SK[0][1]],SK[1]]:SK;let h="",d=0,t=0;
+ gs.forEach(g=>{h+=`<div class="dh" style="margin-top:8px">${g[0]}</div>`;g[1].forEach(x=>{const c=!!S.skills[x[0]];t++;if(c)d++;h+=`<label><input type="checkbox" data-sk="${x[0]}"${c?" checked":""}><span>${x[0]}</span></label>`})});
+ $("skills").innerHTML=h;$("skc").textContent=d+"/"+t}
+let S={checks:{},notes:"",start:"",skills:null,fresh:false},ref=null,t=null;
+const $=id=>document.getElementById(id);
+const key=(n,k)=>"d"+n+"_"+k;
+function todayN(){if(!S.start)return 0;const a=new Date(S.start+"T00:00:00"),b=new Date();b.setHours(0,0,0,0);return Math.floor((b-a)/864e5)+1}
+function render(){
+ const tn=todayN(),open=new Set([...document.querySelectorAll("details[open]")].map(e=>e.dataset.w));
+ const first=!$("weeks").children.length;
+ let done=0,h="";
+ W.forEach((w,i)=>{let wd=0,wt=0,body="";
+  DAYS.filter(x=>x.w===i).forEach(x=>{
+   body+=`<div class="day${x.n===tn?" today":""}" id="day${x.n}"><div class="dh">Day ${x.n} · ${x.d===6?"Sun":["Mon","Tue","Wed","Thu","Fri","Sat"][x.d]}${x.n===tn?" · TODAY":""}</div>`;
+   x.items.forEach((it,k)=>{const c=!!S.checks[key(x.n,k)];wt++;if(c)wd++;
+    body+=`<label class="${c?"d":""}"><input type="checkbox" data-n="${x.n}" data-k="${k}"${c?" checked":""}><span>${it}</span></label>`});
+   body+="</div>"});
+  done+=wd;
+  const isOpen=first?(tn?Math.floor((tn-1)/7)===i:i===0):open.has(""+i);
+  h+=`<details data-w="${i}"${isOpen?" open":""}><summary>Week ${i+1}: ${w[0]}<span class="mu">${w[1]} · ${wd}/${wt} done</span></summary><div class="wb">${body}</div></details>`});
+ $("weeks").innerHTML=h;
+ const p=Math.round(done/TOTAL*100);$("pct").textContent=p+"%";$("cnt").textContent=done+" of "+TOTAL+" tasks";$("fill").style.width=p+"%";
+ if(document.activeElement!==$("notes"))$("notes").value=S.notes||"";$("sd").value=S.start||"";sk();$("fresh").checked=!!S.fresh;
+}
+function save(){clearTimeout(t);t=setTimeout(()=>{try{localStorage.setItem("fde-tracker",JSON.stringify(S));$("msg").textContent="Saved in this browser"}catch(e){$("msg").textContent="Couldn’t save (storage blocked)."}},300)}
+$("weeks").addEventListener("change",e=>{const c=e.target;if(c.type!=="checkbox")return;const k=key(c.dataset.n,c.dataset.k);if(c.checked)S.checks[k]=1;else delete S.checks[k];render();save()});
+$("notes").addEventListener("input",e=>{S.notes=e.target.value;save()});
+$("sd").addEventListener("change",e=>{S.start=e.target.value;render();save()});
+$("skills").addEventListener("change",e=>{const c=e.target;if(!c.dataset.sk)return;S.skills[c.dataset.sk]=c.checked?1:0;sk();save()});
+$("fresh").onchange=e=>{S.fresh=e.target.checked;S.skills=null;sk();save()};
+$("jt").onclick=()=>{const n=todayN();if(n<1||n>70){$("msg").textContent="Set a start date within the 10-week window.";return}
+ document.querySelector(`details[data-w="${Math.floor((n-1)/7)}"]`).open=true;document.getElementById("day"+n).scrollIntoView({behavior:"smooth",block:"center"})};
+$("rs").onclick=()=>{if(confirm("Clear all progress?")){S={checks:{},notes:"",start:S.start,skills:S.skills,fresh:S.fresh};render();save()}};
+$("th").onclick=()=>{const r=document.documentElement,d=getComputedStyle(r).getPropertyValue("--bg").trim()==="#12161c";r.dataset.theme=d?"light":"dark"};
+render();
+(()=>{try{const d=JSON.parse(localStorage.getItem("fde-tracker")||"null");if(d){S={checks:d.checks||{},notes:d.notes||"",start:d.start||"",skills:(d.skills&&Object.keys(d.skills).length)?d.skills:null,fresh:!!d.fresh}}}catch(e){}
+$("who").textContent="Progress is stored in this browser";render()})();
+</script></body></html>
